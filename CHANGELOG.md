@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.1.1] - 2026-03-09
+
+### Added
+
+- `auth_hook` parameter in `create_mount` to support authentication under FastAPI/Starlette applications.
+
+### Fixed
+
+- Properly configured `add` tool input parameters (`a`, `b`) and logic in `examples/fastapi_demo.py`.
+
 ## [0.1.0] - 2026-03-09
 
 ### Added
