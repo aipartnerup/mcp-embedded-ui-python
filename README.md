@@ -96,6 +96,32 @@ app = FastAPI()
 app.routes.append(create_mount(tools=tools, handle_call=handle_call))
 ```
 
+### With auth hook
+
+```python
+from contextlib import contextmanager
+from fastapi import Request
+
+@contextmanager
+def my_auth(request: Request):
+    token = request.headers.get("authorization", "")
+    if not token.startswith("Bearer "):
+        raise ValueError("Unauthorized")
+    # Verify the token with your own logic (JWT, API key, session, etc.)
+    yield
+
+# Pass auth_hook to enable, omit to disable
+app.routes.append(create_mount(
+    tools=tools,
+    handle_call=handle_call,
+    auth_hook=my_auth,
+))
+```
+
+Auth only guards `POST /tools/{name}/call`. Discovery endpoints are always public. The UI has a built-in token input field — enter your Bearer token there and it's sent with every execution request.
+
+The included demo (`examples/fastapi_demo.py`) uses a hardcoded `Bearer demo-secret-token` — the token is printed at startup so you know what to paste into the UI.
+
 ### Dynamic tools
 
 ```python
@@ -164,9 +190,10 @@ Auth only guards `POST /tools/{name}/call`. Discovery endpoints (`GET /tools`, `
 # Install in editable mode with dev dependencies
 pip install -e ".[dev]"
 
-# Run the demo
+# Run the demo (auth enabled with a demo token)
 python examples/fastapi_demo.py
 # Visit http://localhost:8000/explorer/
+# Paste "Bearer demo-secret-token" in the UI's token field to execute tools
 
 # Run tests
 pytest
