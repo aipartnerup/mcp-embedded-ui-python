@@ -29,11 +29,14 @@ class CallResult(TypedDict):
     _meta: dict[str, Any] | None
 
 
-# Any async callable matching: (name, args) -> (content, is_error, trace_id)
-ToolCallHandler = Callable[
-    [str, dict[str, Any]],
-    Awaitable[tuple[list[dict[str, Any]], bool, str | None]],
-]
+_ToolCallResult = Awaitable[tuple[list[dict[str, Any]], bool, str | None]]
+
+# 2-param: (name, args) -> result
+_ToolCallHandler2 = Callable[[str, dict[str, Any]], _ToolCallResult]
+# 3-param: (name, args, request) -> result
+_ToolCallHandler3 = Callable[[str, dict[str, Any], Request], _ToolCallResult]
+
+ToolCallHandler = Union[_ToolCallHandler2, _ToolCallHandler3]
 
 # Auth hook can return either a sync or async context manager
 AuthHook = Callable[
@@ -119,6 +122,8 @@ def build_ui_routes(
     allow_execute: bool = True,
     auth_hook: AuthHook | None = None,
     title: str = "MCP Tool Explorer",
+    project_name: str | None = None,
+    project_url: str | None = None,
 ) -> list[Route]:
     """Build Starlette routes for the MCP Embedded UI.
 
@@ -132,17 +137,17 @@ def build_ui_routes(
             context manager (sync or async).  Raise inside to reject with
             401.  Use your own ``ContextVar`` to propagate identity.
         title: Page title shown in the browser tab and heading.
+        project_name: Optional project name shown in the footer.
+        project_url: Optional project URL linked in the footer.
     """
-    html_page = render_explorer_html(title)
+    html_page = render_explorer_html(
+        title, allow_execute=allow_execute,
+        project_name=project_name, project_url=project_url,
+    )
+    _handler_takes_request = len(inspect.signature(handle_call).parameters) >= 3
 
     async def explorer_page(request: Request) -> HTMLResponse:
         return HTMLResponse(html_page)
-
-    async def meta(request: Request) -> JSONResponse:
-        return JSONResponse({
-            "title": title,
-            "allow_execute": allow_execute,
-        })
 
     async def list_tools(request: Request) -> JSONResponse:
         tool_list = await _resolve_tools(tools)
@@ -176,10 +181,10 @@ def build_ui_routes(
                 cm = auth_hook(request)
                 if isinstance(cm, AbstractAsyncContextManager):
                     async with cm:
-                        return await _do_call(name, body, handle_call)
+                        return await _do_call(name, body, handle_call, request)
                 else:
                     with cm:
-                        return await _do_call(name, body, handle_call)
+                        return await _do_call(name, body, handle_call, request)
             except Exception as e:
                 logger.warning("Auth hook failed for tool %s: %s", name, e)
                 return JSONResponse(
@@ -187,13 +192,16 @@ def build_ui_routes(
                     status_code=401,
                 )
 
-        return await _do_call(name, body, handle_call)
+        return await _do_call(name, body, handle_call, request)
 
     async def _do_call(
-        name: str, body: dict, handler: ToolCallHandler
+        name: str, body: dict, handler: ToolCallHandler, request: Request
     ) -> JSONResponse:
         try:
-            content, is_error, trace_id = await handler(name, body)
+            if _handler_takes_request:
+                content, is_error, trace_id = await handler(name, body, request)  # type: ignore[call-arg]
+            else:
+                content, is_error, trace_id = await handler(name, body)  # type: ignore[call-arg]
             result: dict[str, Any] = {"content": content, "isError": is_error}
             if trace_id:
                 result["_meta"] = {"_trace_id": trace_id}
@@ -207,7 +215,6 @@ def build_ui_routes(
 
     return [
         Route("/", endpoint=explorer_page, methods=["GET"]),
-        Route("/meta", endpoint=meta, methods=["GET"]),
         Route("/tools", endpoint=list_tools, methods=["GET"]),
         Route("/tools/{name:path}/call", endpoint=call_tool, methods=["POST"]),
         Route("/tools/{name:path}", endpoint=tool_detail_endpoint, methods=["GET"]),

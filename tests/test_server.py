@@ -76,27 +76,57 @@ class TestExplorerPage:
 
 
 # ---------------------------------------------------------------------------
-# Meta endpoint
+# Allow execute in HTML
 # ---------------------------------------------------------------------------
 
-class TestMeta:
-    def test_meta_returns_config(self):
+class TestAllowExecuteHtml:
+    def test_default_execute_disabled(self):
         client = _build_client()
-        resp = client.get("/meta")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["allow_execute"] is True
-        assert data["title"] == "MCP Tool Explorer"
+        resp = client.get("/")
+        assert "var executeEnabled = true;" in resp.text
 
-    def test_meta_reflects_allow_execute_false(self):
+    def test_execute_disabled_in_html(self):
         client = _build_client(allow_execute=False)
-        data = client.get("/meta").json()
-        assert data["allow_execute"] is False
+        resp = client.get("/")
+        assert "var executeEnabled = false;" in resp.text
 
-    def test_meta_reflects_custom_title(self):
-        client = _build_client(title="Custom")
-        data = client.get("/meta").json()
-        assert data["title"] == "Custom"
+    def test_execute_enabled_in_html(self):
+        client = _build_client(allow_execute=True)
+        resp = client.get("/")
+        assert "var executeEnabled = true;" in resp.text
+
+
+# ---------------------------------------------------------------------------
+# Project link in footer
+# ---------------------------------------------------------------------------
+
+class TestProjectLink:
+    def test_no_project_link_by_default(self):
+        client = _build_client()
+        resp = client.get("/")
+        assert "{{PROJECT_LINK}}" not in resp.text
+        assert "&middot;" not in resp.text
+
+    def test_project_name_only(self):
+        client = _build_client(project_name="my-project")
+        resp = client.get("/")
+        assert "&middot; my-project" in resp.text
+        assert "<a href=" not in resp.text.split("mcp-embedded-ui</a>")[-1]
+
+    def test_project_name_and_url(self):
+        client = _build_client(
+            project_name="my-project",
+            project_url="https://github.com/example/my-project",
+        )
+        resp = client.get("/")
+        assert "my-project" in resp.text
+        assert "https://github.com/example/my-project" in resp.text
+
+    def test_project_name_xss_escaped(self):
+        client = _build_client(project_name="<script>alert(1)</script>")
+        resp = client.get("/")
+        assert "<script>alert(1)</script>" not in resp.text
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in resp.text
 
 
 # ---------------------------------------------------------------------------
@@ -366,9 +396,6 @@ class TestCreateApp:
         assert resp.status_code == 200
         assert "Test App" in resp.text
 
-        resp = client.get("/meta")
-        assert resp.json()["title"] == "Test App"
-
         resp = client.get("/tools")
         assert len(resp.json()) == 2
 
@@ -522,9 +549,7 @@ class TestGetEndpointsNoAuth:
             yield  # noqa: unreachable
 
         client = _build_client(auth_hook=counting_auth)
-        # GET endpoints should not be guarded by auth
         assert client.get("/").status_code == 200
-        assert client.get("/meta").status_code == 200
         assert client.get("/tools").status_code == 200
         assert client.get("/tools/echo").status_code == 200
         # Auth hook must NOT have been called for any GET request
@@ -580,20 +605,26 @@ class TestHtmlTemplateDrift:
     def test_template_matches_spec_repo(self):
         """Embedded HTML template must match the shared spec repo copy."""
         import os
-        from mcp_embedded_ui.html import _EXPLORER_HTML_TEMPLATE
 
-        spec_path = os.path.join(
+        pkg_html = os.path.join(
+            os.path.dirname(__file__),
+            "..", "src", "mcp_embedded_ui", "explorer.html",
+        )
+        spec_html = os.path.join(
             os.path.dirname(__file__),
             "..", "..", "mcp-embedded-ui", "docs", "explorer.html",
         )
-        spec_path = os.path.normpath(spec_path)
-        if not os.path.exists(spec_path):
-            # Skip if spec repo is not co-located (e.g., CI without sibling checkout)
+        pkg_html = os.path.normpath(pkg_html)
+        spec_html = os.path.normpath(spec_html)
+        if not os.path.exists(spec_html):
             return
-        with open(spec_path, encoding="utf-8") as f:
-            spec_html = f.read()
-        assert _EXPLORER_HTML_TEMPLATE == spec_html, (
-            "HTML template in html.py has drifted from docs/explorer.html in spec repo"
+        with open(pkg_html, encoding="utf-8") as f:
+            pkg_content = f.read()
+        with open(spec_html, encoding="utf-8") as f:
+            spec_content = f.read()
+        assert pkg_content == spec_content, (
+            "explorer.html has drifted from spec repo. "
+            "Run: cp ../mcp-embedded-ui/docs/explorer.html src/mcp_embedded_ui/explorer.html"
         )
 
 

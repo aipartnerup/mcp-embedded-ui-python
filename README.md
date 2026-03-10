@@ -155,6 +155,8 @@ app = create_app(tools=get_tools, handle_call=my_handler)
 | `allow_execute` | `bool` | `True` | Enable/disable tool execution (enforced server-side) |
 | `auth_hook` | `AuthHook \| None` | `None` | Sync/async context manager factory for auth |
 | `title` | `str` | `"MCP Tool Explorer"` | Page title (HTML-escaped automatically) |
+| `project_name` | `str \| None` | `None` | Project name shown in footer |
+| `project_url` | `str \| None` | `None` | Project URL linked in footer (requires `project_name`) |
 
 ### Auth Hook
 
@@ -172,14 +174,13 @@ def my_auth(request):
     yield
 ```
 
-Auth only guards `POST /tools/{name}/call`. Discovery endpoints (`GET /tools`, `GET /tools/{name}`, `GET /meta`) are always public.
+Auth only guards `POST /tools/{name}/call`. Discovery endpoints (`GET /tools`, `GET /tools/{name}`) are always public.
 
 ### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/` | Self-contained HTML explorer page |
-| GET | `/meta` | JSON config — `{ title, allow_execute }` |
 | GET | `/tools` | Summary list of all tools |
 | GET | `/tools/{name}` | Full tool detail with `inputSchema` |
 | POST | `/tools/{name}/call` | Execute a tool, returns MCP `CallToolResult` |

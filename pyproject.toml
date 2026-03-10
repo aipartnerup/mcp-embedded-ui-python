@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-embedded-ui"
-version = "0.1.1"
+version = "0.2.0"
 description = "A lightweight, minimal-dependency embedded Web UI for any MCP Server."
 readme = "README.md"
 license = "Apache-2.0"
@@ -34,7 +34,6 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "httpx",
-    "mypy>=1.0",
     "ruff>=0.1",
     "fastapi",
     "uvicorn",
@@ -49,6 +48,9 @@ Changelog = "https://github.com/aipartnerup/mcp-embedded-ui-python/blob/main/CHA
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_embedded_ui"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/mcp_embedded_ui/explorer.html" = "mcp_embedded_ui/explorer.html"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

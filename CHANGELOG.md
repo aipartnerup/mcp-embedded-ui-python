@@ -2,35 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
-Format follows [Keep a Changelog](https://keepachangelog.com/).
+## [0.2.0] - 2026-03-10
 
-## [0.1.1] - 2026-03-09
+### Removed
+
+- **`/meta` endpoint** — configuration is now baked into the HTML via `{{ALLOW_EXECUTE}}` template variable.
 
 ### Added
 
-- `auth_hook` parameter in `create_mount` to support authentication under FastAPI/Starlette applications.
+- **ToolCallHandler 3-param support** — `handle_call(name, args, request)` is auto-detected via `inspect.signature`. Existing 2-param handlers continue to work unchanged.
+- **`allow_execute`** parameter — defaults to `True`; set to `False` to disable tool execution server-side.
+- **`project_name` / `project_url`** parameters — optional footer link for downstream projects (e.g., `project_name="apcore-mcp"`).
+- **Package resource HTML** — `explorer.html` is now shipped as a package resource file read via `importlib.resources`, replacing the embedded Python string constant.
+- **Tool search/filter, multi-content-type rendering, execution time display, cURL escaping fix** — all from updated shared HTML template.
+
+### Changed
+
+- `html.py` rewritten from ~430 lines to ~34 lines (reads HTML from package resource, builds project link).
+- `server.py` handler detection cached at route-build time for performance.
+- `pyproject.toml` updated with `force-include` for `explorer.html`.
+- README updated: removed `/meta` from endpoints table, added `project_name`/`project_url` to config parameters.
+
+## [0.1.1] - 2025-12-15
 
 ### Fixed
 
-- Properly configured `add` tool input parameters (`a`, `b`) and logic in `examples/fastapi_demo.py`.
+- Expose package version and fix `build_mcp_ui_routes` deprecation warning in tests.
+- Add `auth_hook` parameter to `create_mount` with FastAPI demo example.
 
-## [0.1.0] - 2026-03-09
+## [0.1.0] - 2025-12-01
 
 ### Added
 
-- Core ASGI route builder (`build_ui_routes`) with 5 endpoints:
-  - `GET /` — self-contained HTML explorer page
-  - `GET /meta` — JSON config (`allow_execute`, `title`)
-  - `GET /tools` — tool summary list
-  - `GET /tools/{name}` — tool detail with input schema
-  - `POST /tools/{name}/call` — tool execution
-- High-level factories: `create_app()` (standalone ASGI) and `create_mount()` (Starlette/FastAPI prefix mount)
-- Dynamic tools support — static list, sync callable, or async callable
-- Auth hook — sync and async context manager patterns
-- Configurable title with XSS-safe HTML escaping
-- `annotations` field omitted (not `null`) when absent
-- `_meta` with `_trace_id` omitted when trace ID is empty
-- `allow_execute=False` blocks at handler level, not just UI
-- Auth error responses return only `{"error": "Unauthorized"}` — no detail leaking
-- Backward-compatible `build_mcp_ui_routes()` alias with `DeprecationWarning`
-- 42 tests covering all endpoints, auth, dynamic tools, security, and exports
+- Initial implementation with Starlette routes, ASGI app factory, and mount helper.
+- Tool discovery, execution, and auth hook support.
