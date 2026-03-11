@@ -61,6 +61,7 @@ app.routes.append(
     create_mount(
         tools=tools,
         handle_call=handle_tool_call,
+        allow_execute=True,
         auth_hook=my_auth_hook,
         title="My MCP Explorer",
     )

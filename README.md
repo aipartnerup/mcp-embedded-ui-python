@@ -47,11 +47,11 @@ from mcp_embedded_ui import create_mount
 
 app = FastAPI()
 
-# Mount at /explorer (default)
-app.routes.append(create_mount(tools=my_tools, handle_call=my_handler))
+# Mount at /explorer (default), enable tool execution
+app.routes.append(create_mount(tools=my_tools, handle_call=my_handler, allow_execute=True))
 
 # Or specify a custom prefix
-app.routes.append(create_mount("/mcp-ui", tools=my_tools, handle_call=my_handler))
+app.routes.append(create_mount("/mcp-ui", tools=my_tools, handle_call=my_handler, allow_execute=True))
 
 # Visit http://localhost:8000/explorer/
 ```
@@ -62,7 +62,7 @@ app.routes.append(create_mount("/mcp-ui", tools=my_tools, handle_call=my_handler
 from mcp_embedded_ui import create_app
 
 # Returns a standard ASGI app — mount in any ASGI-compatible framework
-ui_app = create_app(tools=my_tools, handle_call=my_handler)
+ui_app = create_app(tools=my_tools, handle_call=my_handler, allow_execute=True)
 ```
 
 ### Full working example
@@ -93,7 +93,7 @@ async def handle_call(name, args):
 
 # 3. Mount the UI
 app = FastAPI()
-app.routes.append(create_mount(tools=tools, handle_call=handle_call))
+app.routes.append(create_mount(tools=tools, handle_call=handle_call, allow_execute=True))
 ```
 
 ### With auth hook
@@ -114,6 +114,7 @@ def my_auth(request: Request):
 app.routes.append(create_mount(
     tools=tools,
     handle_call=handle_call,
+    allow_execute=True,
     auth_hook=my_auth,
 ))
 ```
@@ -133,7 +134,7 @@ def get_tools():
 async def get_tools():
     return await registry.async_list_tools()
 
-app = create_app(tools=get_tools, handle_call=my_handler)
+app = create_app(tools=get_tools, handle_call=my_handler, allow_execute=True)
 ```
 
 ## API
