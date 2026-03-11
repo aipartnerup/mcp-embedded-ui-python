@@ -152,7 +152,7 @@ app = create_app(tools=get_tools, handle_call=my_handler)
 |-----------|------|---------|-------------|
 | `tools` | `list \| Callable \| AsyncCallable` | _required_ | MCP Tool objects (`.name`, `.description`, `.inputSchema`) |
 | `handle_call` | `ToolCallHandler` | _required_ | `async (name, args) -> (content, is_error, trace_id)` |
-| `allow_execute` | `bool` | `True` | Enable/disable tool execution (enforced server-side) |
+| `allow_execute` | `bool` | `False` | Enable/disable tool execution (enforced server-side) |
 | `auth_hook` | `AuthHook \| None` | `None` | Sync/async context manager factory for auth |
 | `title` | `str` | `"MCP Tool Explorer"` | Page title (HTML-escaped automatically) |
 | `project_name` | `str \| None` | `None` | Project name shown in footer |

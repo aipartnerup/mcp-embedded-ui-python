@@ -120,7 +120,7 @@ def build_ui_routes(
     tools: ToolsProvider,
     handle_call: ToolCallHandler,
     *,
-    allow_execute: bool = True,
+    allow_execute: bool = False,
     auth_hook: AuthHook | None = None,
     title: str = "MCP Tool Explorer",
     project_name: str | None = None,

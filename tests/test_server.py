@@ -82,7 +82,7 @@ class TestAllowExecuteHtml:
     def test_default_execute_disabled(self):
         client = _build_client()
         resp = client.get("/")
-        assert "var executeEnabled = true;" in resp.text
+        assert "var executeEnabled = false;" in resp.text
 
     def test_execute_disabled_in_html(self):
         client = _build_client(allow_execute=False)
@@ -180,7 +180,7 @@ class TestToolDetail:
 
 class TestCallTool:
     def test_successful_call(self):
-        client = _build_client()
+        client = _build_client(allow_execute=True)
         resp = client.post("/tools/echo/call", json={"msg": "hi"})
         assert resp.status_code == 200
         data = resp.json()
@@ -189,19 +189,19 @@ class TestCallTool:
         assert data["_meta"]["_trace_id"] == "t1"
 
     def test_error_call(self):
-        client = _build_client()
+        client = _build_client(allow_execute=True)
         resp = client.post("/tools/boom/call", json={})
         assert resp.status_code == 500
         data = resp.json()
         assert data["isError"] is True
 
     def test_missing_tool_returns_404(self):
-        client = _build_client()
+        client = _build_client(allow_execute=True)
         resp = client.post("/tools/nope/call", json={})
         assert resp.status_code == 404
 
     def test_empty_body_treated_as_empty_dict(self):
-        client = _build_client()
+        client = _build_client(allow_execute=True)
         resp = client.post(
             "/tools/echo/call",
             content=b"not json",
@@ -210,7 +210,7 @@ class TestCallTool:
         assert resp.status_code == 200
 
     def test_handler_exception_returns_404_for_unknown(self):
-        client = _build_client()
+        client = _build_client(allow_execute=True)
         resp = client.post("/tools/unknown_tool/call", json={})
         assert resp.status_code == 404
 
@@ -244,7 +244,7 @@ class TestSyncAuthHook:
                 raise ValueError("bad token")
             yield
 
-        client = _build_client(auth_hook=auth)
+        client = _build_client(allow_execute=True, auth_hook=auth)
         resp = client.post(
             "/tools/echo/call",
             json={"msg": "hi"},
@@ -258,7 +258,7 @@ class TestSyncAuthHook:
             raise ValueError("nope")
             yield  # noqa: F541
 
-        client = _build_client(auth_hook=auth)
+        client = _build_client(allow_execute=True, auth_hook=auth)
         resp = client.post("/tools/echo/call", json={})
         assert resp.status_code == 401
         assert "Unauthorized" in resp.json()["error"]
@@ -277,7 +277,7 @@ class TestAsyncAuthHook:
                 raise ValueError("bad token")
             yield
 
-        client = _build_client(auth_hook=auth)
+        client = _build_client(allow_execute=True, auth_hook=auth)
         resp = client.post(
             "/tools/echo/call",
             json={"msg": "async"},
@@ -292,7 +292,7 @@ class TestAsyncAuthHook:
             raise ValueError("async nope")
             yield  # noqa: F541
 
-        client = _build_client(auth_hook=auth)
+        client = _build_client(allow_execute=True, auth_hook=auth)
         resp = client.post("/tools/echo/call", json={})
         assert resp.status_code == 401
 
@@ -303,7 +303,7 @@ class TestAsyncAuthHook:
 
 class TestTraceId:
     def test_no_meta_when_trace_id_is_none(self):
-        client = _build_client()
+        client = _build_client(allow_execute=True)
         resp = client.post("/tools/boom/call", json={})
         data = resp.json()
         assert "_meta" not in data
@@ -373,7 +373,7 @@ class TestAsyncToolsCallable:
         async def get_tools():
             return [FakeTool("echo", "Echo")]
 
-        routes = build_ui_routes(get_tools, fake_handler)
+        routes = build_ui_routes(get_tools, fake_handler, allow_execute=True)
         client = TestClient(Mount("/", routes=routes))
         resp = client.post("/tools/echo/call", json={"msg": "hello"})
         assert resp.status_code == 200
@@ -440,7 +440,7 @@ class TestCreateMount:
 
         from mcp_embedded_ui import create_mount
 
-        mount = create_mount("/ui", tools=TOOLS, handle_call=fake_handler, title="Mounted")
+        mount = create_mount("/ui", tools=TOOLS, handle_call=fake_handler, title="Mounted", allow_execute=True)
         app = Starlette(routes=[mount])
         client = TestClient(app)
 
@@ -525,7 +525,7 @@ class TestHandlerException:
 
         from mcp_embedded_ui import build_ui_routes
 
-        routes = build_ui_routes(TOOLS, throwing_handler)
+        routes = build_ui_routes(TOOLS, throwing_handler, allow_execute=True)
         client = TestClient(Mount("/", routes=routes))
         resp = client.post("/tools/echo/call", json={"msg": "hi"})
         assert resp.status_code == 500
@@ -551,7 +551,7 @@ class TestGetEndpointsNoAuth:
             raise ValueError("no auth")
             yield  # noqa: F541
 
-        client = _build_client(auth_hook=counting_auth)
+        client = _build_client(allow_execute=True, auth_hook=counting_auth)
         assert client.get("/").status_code == 200
         assert client.get("/tools").status_code == 200
         assert client.get("/tools/echo").status_code == 200
@@ -642,7 +642,7 @@ class TestAuthErrorNoLeak:
             raise RuntimeError("DB connection failed at /var/secrets/db.key")
             yield  # noqa: F541
 
-        client = _build_client(auth_hook=auth)
+        client = _build_client(allow_execute=True, auth_hook=auth)
         resp = client.post("/tools/echo/call", json={})
         assert resp.status_code == 401
         data = resp.json()
